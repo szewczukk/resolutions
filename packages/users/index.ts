@@ -9,13 +9,24 @@ const prisma = new PrismaClient();
 app.use(express.json());
 
 app.get('/api/v1/users', async (req, res) => {
-	const users = await prisma.user.findMany({});
+	const { username } = req.query;
 
-	res.send(users);
+	if (username === undefined) {
+		const users = await prisma.user.findMany();
+
+		res.send(users);
+		return;
+	}
+
+	const user = await prisma.user.findUnique({
+		where: { username: username.toString() },
+	});
+	res.send(user);
 });
 
 app.post('/api/v1/users', async (req, res) => {
 	const { username, password } = req.body;
+
 	assert(typeof username === 'string');
 	assert(typeof password === 'string');
 
