@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -30,6 +31,8 @@ func main() {
 	db.AutoMigrate(&Resolution{})
 
 	app := fiber.New()
+
+	app.Use(cors.New())
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		var users []Resolution
