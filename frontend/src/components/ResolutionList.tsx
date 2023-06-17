@@ -1,23 +1,24 @@
-import { useEffect, useState } from "react";
-
-interface Resolution {
-	userId: number;
-	name: string;
-	ID: number;
-}
+import { useEffect } from "react";
+import { Resolution } from "../types";
+import {
+	useResolutions,
+	useResolutionsDispatch,
+} from "../contexts/ResolutionsProvider";
 
 function ResolutionList() {
-	const [resolutions, setResolutions] = useState<Resolution[]>([]);
+	const resolutions = useResolutions();
+	const resolutionsDispatch = useResolutionsDispatch();
 
 	useEffect(() => {
-		fetch("http://localhost:3001/").then(
-			response => response.json().then(
-				result => {
-					console.log(result)
-					setResolutions(result);
-				}
-			)
-		)
+		fetch("http://localhost:3001/").then((response) =>
+			response.json().then((result) => {
+				console.log(result);
+				resolutionsDispatch({
+					type: "SET_RESOLUTIONS",
+					payload: { resolutions: result as Resolution[] },
+				});
+			})
+		);
 	}, []);
 
 	return (

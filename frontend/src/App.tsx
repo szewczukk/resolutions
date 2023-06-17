@@ -1,11 +1,14 @@
 import ResolutionForm from "./components/ResolutionForm";
 import ResolutionList from "./components/ResolutionList";
+import ResolutionsProvider from "./contexts/ResolutionsProvider";
 
 function App() {
 	return (
 		<>
-			<ResolutionList />
-			<ResolutionForm />
+			<ResolutionsProvider>
+				<ResolutionList />
+				<ResolutionForm />
+			</ResolutionsProvider>
 		</>
 	);
 }
