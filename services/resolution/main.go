@@ -1,6 +1,10 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"net/http"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -9,12 +13,12 @@ import (
 type Resolution struct {
 	gorm.Model
 	Name   string `json:"name"`
-	UserId string `json:"userId"`
+	UserId int    `json:"userId"`
 }
 
 type CreateResolutionDTO struct {
 	Name   string `json:"name"`
-	UserId string `json:"userId"`
+	UserId int    `json:"userId"`
 }
 
 func main() {
@@ -39,6 +43,15 @@ func main() {
 
 		if err := c.BodyParser(createResolutionDto); err != nil {
 			return err
+		}
+
+		response, err := http.Get(fmt.Sprintf("http://localhost:3000/%v/", createResolutionDto.UserId))
+		if err != nil {
+			return err
+		}
+
+		if response.StatusCode != 200 {
+			return errors.New("user not found")
 		}
 
 		resolution := &Resolution{

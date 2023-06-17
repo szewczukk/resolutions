@@ -29,10 +29,10 @@ func main() {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		var user []User
-		db.Find(&user)
+		var users []User
+		db.Find(&users)
 
-		return c.JSON(user)
+		return c.JSON(users)
 	})
 
 	app.Post("/", func(c *fiber.Ctx) error {
@@ -61,6 +61,19 @@ func main() {
 		db.Find(&users)
 
 		return c.JSON(users)
+	})
+
+	app.Get("/:userId/", func(c *fiber.Ctx) error {
+		userId := c.Params("userId")
+
+		var user User
+		result := db.First(&user, userId)
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return c.JSON(user)
 	})
 
 	app.Listen(":3000")
