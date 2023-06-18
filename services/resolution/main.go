@@ -64,10 +64,7 @@ func main() {
 
 		db.Create(&resolution)
 
-		var resolutions []Resolution
-		db.Find(&resolutions)
-
-		return c.JSON(resolutions)
+		return c.JSON(resolution)
 	})
 
 	app.Listen(":3001")

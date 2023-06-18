@@ -15,10 +15,10 @@ function ResolutionForm() {
 			body: JSON.stringify({ name, userId }),
 		});
 
+		const result = await response.json();
+
 		if (response.status === 200) {
-			resolutionsDispatch(
-				addResolution({ ID: Math.random() * 10 + 5, name, userId })
-			);
+			resolutionsDispatch(addResolution(result));
 		}
 	};
 
