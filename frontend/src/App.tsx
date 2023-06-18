@@ -1,6 +1,6 @@
 import ResolutionForm from "./components/ResolutionForm";
 import ResolutionList from "./components/ResolutionList";
-import ResolutionsProvider from "./contexts/ResolutionsProvider";
+import { ResolutionsProvider } from "./contexts/Resolutions";
 
 function App() {
 	return (

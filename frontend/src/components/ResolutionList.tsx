@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { Resolution } from "../types";
 import {
+	setResolutions,
 	useResolutions,
 	useResolutionsDispatch,
-} from "../contexts/ResolutionsProvider";
+} from "../contexts/Resolutions";
 
 function ResolutionList() {
 	const resolutions = useResolutions();
@@ -12,11 +12,7 @@ function ResolutionList() {
 	useEffect(() => {
 		fetch("http://localhost:3001/").then((response) =>
 			response.json().then((result) => {
-				console.log(result);
-				resolutionsDispatch({
-					type: "SET_RESOLUTIONS",
-					payload: { resolutions: result as Resolution[] },
-				});
+				resolutionsDispatch(setResolutions(result));
 			})
 		);
 	}, []);

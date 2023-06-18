@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useResolutionsDispatch } from "../contexts/ResolutionsProvider";
+import { addResolution, useResolutionsDispatch } from "../contexts/Resolutions";
 
 function ResolutionForm() {
 	const [name, setName] = useState("");
@@ -16,12 +16,9 @@ function ResolutionForm() {
 		});
 
 		if (response.status === 200) {
-			resolutionsDispatch({
-				type: "ADD_RESOLUTION",
-				payload: {
-					resolution: { ID: Math.random() * 100, name, userId },
-				},
-			});
+			resolutionsDispatch(
+				addResolution({ ID: Math.random() * 10 + 5, name, userId })
+			);
 		}
 	};
 
