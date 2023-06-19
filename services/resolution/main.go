@@ -1,71 +1,92 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"net/http"
+	"context"
+	"log"
+	"net"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/szewczukk/resolution-service/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-type Resolution struct {
-	gorm.Model
-	Name   string `json:"name"`
-	UserId int    `json:"userId"`
+type ResolutionModel struct {
+	ID     int    `gorm:"primarykey"`
+	Name   string `gorm:"unique"`
+	UserId int
 }
 
-type CreateResolutionDTO struct {
-	Name   string `json:"name"`
-	UserId int    `json:"userId"`
+type ResolutionServiceServer struct {
+	proto.UnimplementedResolutionServiceServer
+	Db *gorm.DB
+}
+
+func NewResolutionServiceServer(db *gorm.DB) *ResolutionServiceServer {
+	return &ResolutionServiceServer{
+		Db: db,
+	}
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("db.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("resolutions.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&Resolution{})
+	db.AutoMigrate(&ResolutionModel{})
 
-	app := fiber.New()
+	listener, err := net.Listen("tcp", ":3001")
+	if err != nil {
+		panic(err)
+	}
 
-	app.Use(cors.New())
+	grpcServer := grpc.NewServer()
+	resolutionServiceServer := NewResolutionServiceServer(db)
+	proto.RegisterResolutionServiceServer(grpcServer, resolutionServiceServer)
+	reflection.Register(grpcServer)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		var users []Resolution
-		db.Find(&users)
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
 
-		return c.JSON(users)
-	})
+func (s *ResolutionServiceServer) GetAllResolutions(
+	ctx context.Context,
+	request *proto.GetAllResolutionsRequest,
+) (*proto.GetAllResolutionsResponse, error) {
+	var resolutionModels []ResolutionModel
+	s.Db.Find(&resolutionModels)
 
-	app.Post("/", func(c *fiber.Ctx) error {
-		createResolutionDto := new(CreateResolutionDTO)
+	var protoResolutions []*proto.Resolution
 
-		if err := c.BodyParser(createResolutionDto); err != nil {
-			return err
-		}
+	for _, resolution := range resolutionModels {
+		protoResolutions = append(protoResolutions, &proto.Resolution{
+			Id:     int32(resolution.ID),
+			Name:   resolution.Name,
+			UserId: int32(resolution.UserId),
+		})
+	}
 
-		response, err := http.Get(fmt.Sprintf("http://localhost:3000/%v/", createResolutionDto.UserId))
-		if err != nil {
-			return err
-		}
+	return &proto.GetAllResolutionsResponse{Resolutions: protoResolutions}, nil
+}
 
-		if response.StatusCode != 200 {
-			return errors.New("user not found")
-		}
+func (s *ResolutionServiceServer) CreateResolution(
+	ctx context.Context,
+	request *proto.CreateResolutionRequest,
+) (*proto.Resolution, error) {
+	resolutionModel := ResolutionModel{Name: request.Name, UserId: int(request.UserId)}
+	err := s.Db.Create(&resolutionModel).Error
+	if err != nil {
+		return nil, err
+	}
 
-		resolution := &Resolution{
-			Name:   createResolutionDto.Name,
-			UserId: createResolutionDto.UserId,
-		}
+	protoUser := &proto.Resolution{
+		Id:     int32(resolutionModel.ID),
+		Name:   resolutionModel.Name,
+		UserId: int32(resolutionModel.UserId),
+	}
 
-		db.Create(&resolution)
-
-		return c.JSON(resolution)
-	})
-
-	app.Listen(":3001")
+	return protoUser, nil
 }

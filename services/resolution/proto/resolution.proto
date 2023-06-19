@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "github.com/szewczukk/resolution-service/proto";
+
+message Resolution {
+	int32 id = 1;
+	string name = 2;
+	int32 userId = 3;
+}
+
+message GetAllResolutionsRequest {
+
+}
+
+message GetAllResolutionsResponse {
+	repeated Resolution resolutions = 1;
+}
+
+message CreateResolutionRequest {
+	string name = 1;
+	int32 userId = 2;
+}
+
+service ResolutionService {
+	rpc GetAllResolutions(GetAllResolutionsRequest) returns (GetAllResolutionsResponse) {}
+	rpc CreateResolution(CreateResolutionRequest) returns (Resolution) {}
+}
