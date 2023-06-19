@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type User struct {
+type UserModel struct {
 	ID       int    `gorm:"primarykey"`
 	Username string `gorm:"unique"`
 	Password string
@@ -37,7 +37,7 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&UserModel{})
 
 	listener, err := net.Listen("tcp", ":3000")
 	if err != nil {
@@ -59,14 +59,15 @@ func (s *UserServiceServer) UserExists(
 	ctx context.Context,
 	request *proto.UserExistsRequest,
 ) (*proto.UserExistsResponse, error) {
-	user := User{ID: int(request.Id)}
-	result := s.Db.First(&user)
-	if result.Error != nil {
-		return nil, result.Error
-	}
+	userModel := UserModel{ID: int(request.Id)}
+	err := s.Db.First(&userModel).Error
 
-	if result.RowsAffected == 0 {
-		return nil, errors.New("not exists")
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &proto.UserExistsResponse{Exists: false}, nil
+		} else {
+			return nil, err
+		}
 	}
 
 	return &proto.UserExistsResponse{Exists: true}, nil
@@ -76,25 +77,28 @@ func (s *UserServiceServer) GetAllUsers(
 	ctx context.Context,
 	request *proto.GetAllUsersRequest,
 ) (*proto.GetAllUsersResponse, error) {
-	var users []User
-	s.Db.Find(&users)
+	var userModels []UserModel
+	s.Db.Find(&userModels)
 
 	var protoUsers []*proto.User
 
-	for _, user := range users {
+	for _, user := range userModels {
 		protoUsers = append(protoUsers, &proto.User{Id: int32(user.ID), Username: user.Username})
 	}
 
 	return &proto.GetAllUsersResponse{Users: protoUsers}, nil
 }
 
-func (s *UserServiceServer) CreateUser(ctx context.Context, request *proto.CreateUserRequest) (*proto.User, error) {
+func (s *UserServiceServer) CreateUser(
+	ctx context.Context,
+	request *proto.CreateUserRequest,
+) (*proto.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	payload := User{Username: request.Username, Password: string(hashedPassword)}
+	payload := UserModel{Username: request.Username, Password: string(hashedPassword)}
 	err = s.Db.Create(&payload).Error
 	if err != nil {
 		return nil, err
