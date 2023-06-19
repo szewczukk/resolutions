@@ -1,15 +1,21 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"context"
+	"errors"
+	"log"
+	"net"
+
+	"github.com/szewczukk/user-service/proto"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	gorm.Model
+	ID       int    `gorm:"primarykey"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -19,65 +25,84 @@ type CreateUserDTO struct {
 	Password string `json:"password"`
 }
 
+type UserServiceServer struct {
+	proto.UnimplementedUserServiceServer
+	Db *gorm.DB
+}
+
+func NewUserServiceServer(db *gorm.DB) *UserServiceServer {
+	return &UserServiceServer{
+		Db: db,
+	}
+}
+
 func main() {
-	db, err := gorm.Open(sqlite.Open("db.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("users.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
 	db.AutoMigrate(&User{})
 
-	app := fiber.New()
+	listener, err := net.Listen("tcp", ":3000")
+	if err != nil {
+		panic(err)
+	}
 
-	app.Use(cors.New())
+	grpcServer := grpc.NewServer()
+	userServiceServer := NewUserServiceServer(db)
+	proto.RegisterUserServiceServer(grpcServer, userServiceServer)
+	reflection.Register(grpcServer)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		var users []User
-		db.Find(&users)
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 
-		return c.JSON(users)
-	})
+}
 
-	app.Post("/", func(c *fiber.Ctx) error {
-		createUserDto := new(CreateUserDTO)
+func (s *UserServiceServer) UserExists(
+	ctx context.Context,
+	request *proto.UserExistsRequest,
+) (*proto.UserExistsResponse, error) {
+	user := User{ID: int(request.Id)}
+	result := s.Db.First(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
-		if err := c.BodyParser(createUserDto); err != nil {
-			return err
-		}
+	if result.RowsAffected == 0 {
+		return nil, errors.New("not exists")
+	}
 
-		hashedPassword, err := bcrypt.GenerateFromPassword(
-			[]byte(createUserDto.Password), bcrypt.DefaultCost,
-		)
+	return &proto.UserExistsResponse{Exists: true}, nil
+}
 
-		if err != nil {
-			return err
-		}
+func (s *UserServiceServer) GetAllUsers(
+	ctx context.Context,
+	request *proto.GetAllUsersRequest,
+) (*proto.GetAllUsersResponse, error) {
+	var users []User
+	s.Db.Find(&users)
 
-		user := &User{
-			Username: createUserDto.Username,
-			Password: string(hashedPassword),
-		}
+	var protoUsers []*proto.User
 
-		db.Create(&user)
+	for _, user := range users {
+		protoUsers = append(protoUsers, &proto.User{Id: int32(user.ID), Username: user.Username})
+	}
 
-		var users []User
-		db.Find(&users)
+	return &proto.GetAllUsersResponse{Users: protoUsers}, nil
+}
 
-		return c.JSON(users)
-	})
+func (s *UserServiceServer) CreateUser(ctx context.Context, request *proto.CreateUserRequest) (*proto.User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
 
-	app.Get("/:userId/", func(c *fiber.Ctx) error {
-		userId := c.Params("userId")
+	payload := User{Username: request.Username, Password: string(hashedPassword)}
+	s.Db.Create(&payload)
 
-		var user User
-		result := db.First(&user, userId)
+	protoUser := &proto.User{Id: int32(payload.ID), Username: payload.Username}
 
-		if result.Error != nil {
-			return result.Error
-		}
-
-		return c.JSON(user)
-	})
-
-	app.Listen(":3000")
+	return protoUser, nil
 }

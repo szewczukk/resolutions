@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "github.com/szewczukk/user-service/proto";
+
+message UserExistsRequest {
+	int32 id = 1;
+}
+
+message UserExistsResponse {
+	bool exists = 1;
+}
+
+message User {
+	int32 id = 1;
+	string username = 2;
+}
+
+message GetAllUsersRequest {
+
+}
+
+message GetAllUsersResponse {
+	repeated User users = 1;
+}
+
+message CreateUserRequest {
+	string username = 1;
+	string password = 2;
+}
+
+service UserService {
+	rpc UserExists(UserExistsRequest) returns (UserExistsResponse) {}
+	rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
+	rpc CreateUser(CreateUserRequest) returns (User) {}
+}
