@@ -16,13 +16,8 @@ import (
 
 type User struct {
 	ID       int    `gorm:"primarykey"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type CreateUserDTO struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `gorm:"unique"`
+	Password string
 }
 
 type UserServiceServer struct {
@@ -100,7 +95,10 @@ func (s *UserServiceServer) CreateUser(ctx context.Context, request *proto.Creat
 	}
 
 	payload := User{Username: request.Username, Password: string(hashedPassword)}
-	s.Db.Create(&payload)
+	err = s.Db.Create(&payload).Error
+	if err != nil {
+		return nil, err
+	}
 
 	protoUser := &proto.User{Id: int32(payload.ID), Username: payload.Username}
 
