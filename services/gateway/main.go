@@ -23,6 +23,10 @@ type LoginPayload struct {
 	Password string `json:"password"`
 }
 
+type AuthenticationTokenPayload struct {
+	Token string `json:"token"`
+}
+
 var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func main() {
@@ -126,7 +130,7 @@ func main() {
 			return err
 		}
 
-		return c.JSON(tokenString)
+		return c.JSON(AuthenticationTokenPayload{Token: tokenString})
 	})
 
 	app.Listen(":3002")
