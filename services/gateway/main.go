@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/golang-jwt/jwt"
 	resolutionServiceProto "github.com/szewczukk/resolution-service/proto"
 	userServiceProto "github.com/szewczukk/user-service/proto"
 	"google.golang.org/grpc"
@@ -16,6 +17,13 @@ type CreateServicePayload struct {
 	Name   string `json:"name"`
 	UserId int    `json:"userId"`
 }
+
+type LoginPayload struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func main() {
 	resolutionServiceConnection, err := grpc.Dial(
@@ -90,6 +98,35 @@ func main() {
 		}
 
 		return c.JSON(resolution)
+	})
+
+	app.Post("/login/", func(c *fiber.Ctx) error {
+		loginPayload := new(LoginPayload)
+		if err := c.BodyParser(loginPayload); err != nil {
+			return err
+		}
+
+		response, err := userServiceClient.AuthenticateUser(
+			context.Background(),
+			&userServiceProto.UserCredentials{
+				Username: loginPayload.Username,
+				Password: loginPayload.Password,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"userId": response.UserId,
+		})
+
+		tokenString, err := token.SignedString(sampleSecretKey)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(tokenString)
 	})
 
 	app.Listen(":3002")
