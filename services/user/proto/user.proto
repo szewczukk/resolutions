@@ -23,7 +23,7 @@ message GetAllUsersResponse {
 	repeated User users = 1;
 }
 
-message CreateUserRequest {
+message UserCredentials {
 	string username = 1;
 	string password = 2;
 }
@@ -31,5 +31,5 @@ message CreateUserRequest {
 service UserService {
 	rpc UserExists(UserExistsRequest) returns (UserExistsResponse) {}
 	rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
-	rpc CreateUser(CreateUserRequest) returns (User) {}
+	rpc CreateUser(UserCredentials) returns (User) {}
 }

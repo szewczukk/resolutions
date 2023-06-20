@@ -90,7 +90,7 @@ func (s *UserServiceServer) GetAllUsers(
 
 func (s *UserServiceServer) CreateUser(
 	ctx context.Context,
-	request *proto.CreateUserRequest,
+	request *proto.UserCredentials,
 ) (*proto.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
