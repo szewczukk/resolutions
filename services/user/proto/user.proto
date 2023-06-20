@@ -28,8 +28,13 @@ message UserCredentials {
 	string password = 2;
 }
 
+message AuthenticateUserResponse {
+	int32 userId = 1;
+}
+
 service UserService {
 	rpc UserExists(UserExistsRequest) returns (UserExistsResponse) {}
 	rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
 	rpc CreateUser(UserCredentials) returns (User) {}
+	rpc AuthenticateUser(UserCredentials) returns (AuthenticateUserResponse) {}
 }

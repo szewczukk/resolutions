@@ -107,3 +107,21 @@ func (s *UserServiceServer) CreateUser(
 
 	return protoUser, nil
 }
+
+func (s *UserServiceServer) AuthenticateUser(
+	ctx context.Context,
+	request *proto.UserCredentials,
+) (*proto.AuthenticateUserResponse, error) {
+	user := new(UserModel)
+	err := s.Db.First(&user, UserModel{Username: request.Username}).Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
+	if err != nil {
+		return nil, errors.New("wrong password")
+	}
+
+	return &proto.AuthenticateUserResponse{UserId: int32(user.ID)}, nil
+}
