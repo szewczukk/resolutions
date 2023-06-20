@@ -12,7 +12,7 @@ message GetAllResolutionsRequest {
 
 }
 
-message GetAllResolutionsResponse {
+message RepeatedResolutions {
 	repeated Resolution resolutions = 1;
 }
 
@@ -21,7 +21,12 @@ message CreateResolutionRequest {
 	int32 userId = 2;
 }
 
+message UserId {
+	int32 userId = 1;
+}
+
 service ResolutionService {
-	rpc GetAllResolutions(GetAllResolutionsRequest) returns (GetAllResolutionsResponse) {}
+	rpc GetAllResolutions(GetAllResolutionsRequest) returns (RepeatedResolutions) {}
+	rpc GetResolutionsByUserId(UserId) returns (RepeatedResolutions) {}
 	rpc CreateResolution(CreateResolutionRequest) returns (Resolution) {}
 }

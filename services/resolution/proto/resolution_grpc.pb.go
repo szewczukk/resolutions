@@ -22,7 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResolutionServiceClient interface {
-	GetAllResolutions(ctx context.Context, in *GetAllResolutionsRequest, opts ...grpc.CallOption) (*GetAllResolutionsResponse, error)
+	GetAllResolutions(ctx context.Context, in *GetAllResolutionsRequest, opts ...grpc.CallOption) (*RepeatedResolutions, error)
+	GetResolutionsByUserId(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*RepeatedResolutions, error)
 	CreateResolution(ctx context.Context, in *CreateResolutionRequest, opts ...grpc.CallOption) (*Resolution, error)
 }
 
@@ -34,9 +35,18 @@ func NewResolutionServiceClient(cc grpc.ClientConnInterface) ResolutionServiceCl
 	return &resolutionServiceClient{cc}
 }
 
-func (c *resolutionServiceClient) GetAllResolutions(ctx context.Context, in *GetAllResolutionsRequest, opts ...grpc.CallOption) (*GetAllResolutionsResponse, error) {
-	out := new(GetAllResolutionsResponse)
+func (c *resolutionServiceClient) GetAllResolutions(ctx context.Context, in *GetAllResolutionsRequest, opts ...grpc.CallOption) (*RepeatedResolutions, error) {
+	out := new(RepeatedResolutions)
 	err := c.cc.Invoke(ctx, "/ResolutionService/GetAllResolutions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resolutionServiceClient) GetResolutionsByUserId(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*RepeatedResolutions, error) {
+	out := new(RepeatedResolutions)
+	err := c.cc.Invoke(ctx, "/ResolutionService/GetResolutionsByUserId", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +66,8 @@ func (c *resolutionServiceClient) CreateResolution(ctx context.Context, in *Crea
 // All implementations must embed UnimplementedResolutionServiceServer
 // for forward compatibility
 type ResolutionServiceServer interface {
-	GetAllResolutions(context.Context, *GetAllResolutionsRequest) (*GetAllResolutionsResponse, error)
+	GetAllResolutions(context.Context, *GetAllResolutionsRequest) (*RepeatedResolutions, error)
+	GetResolutionsByUserId(context.Context, *UserId) (*RepeatedResolutions, error)
 	CreateResolution(context.Context, *CreateResolutionRequest) (*Resolution, error)
 	mustEmbedUnimplementedResolutionServiceServer()
 }
@@ -65,8 +76,11 @@ type ResolutionServiceServer interface {
 type UnimplementedResolutionServiceServer struct {
 }
 
-func (UnimplementedResolutionServiceServer) GetAllResolutions(context.Context, *GetAllResolutionsRequest) (*GetAllResolutionsResponse, error) {
+func (UnimplementedResolutionServiceServer) GetAllResolutions(context.Context, *GetAllResolutionsRequest) (*RepeatedResolutions, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllResolutions not implemented")
+}
+func (UnimplementedResolutionServiceServer) GetResolutionsByUserId(context.Context, *UserId) (*RepeatedResolutions, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetResolutionsByUserId not implemented")
 }
 func (UnimplementedResolutionServiceServer) CreateResolution(context.Context, *CreateResolutionRequest) (*Resolution, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResolution not implemented")
@@ -102,6 +116,24 @@ func _ResolutionService_GetAllResolutions_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResolutionService_GetResolutionsByUserId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResolutionServiceServer).GetResolutionsByUserId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ResolutionService/GetResolutionsByUserId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResolutionServiceServer).GetResolutionsByUserId(ctx, req.(*UserId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResolutionService_CreateResolution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateResolutionRequest)
 	if err := dec(in); err != nil {
@@ -130,6 +162,10 @@ var ResolutionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAllResolutions",
 			Handler:    _ResolutionService_GetAllResolutions_Handler,
+		},
+		{
+			MethodName: "GetResolutionsByUserId",
+			Handler:    _ResolutionService_GetResolutionsByUserId_Handler,
 		},
 		{
 			MethodName: "CreateResolution",

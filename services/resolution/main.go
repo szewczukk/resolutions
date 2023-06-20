@@ -67,7 +67,7 @@ func main() {
 func (s *ResolutionServiceServer) GetAllResolutions(
 	ctx context.Context,
 	request *proto.GetAllResolutionsRequest,
-) (*proto.GetAllResolutionsResponse, error) {
+) (*proto.RepeatedResolutions, error) {
 	var resolutionModels []ResolutionModel
 	s.Db.Find(&resolutionModels)
 
@@ -81,7 +81,7 @@ func (s *ResolutionServiceServer) GetAllResolutions(
 		})
 	}
 
-	return &proto.GetAllResolutionsResponse{Resolutions: protoResolutions}, nil
+	return &proto.RepeatedResolutions{Resolutions: protoResolutions}, nil
 }
 
 func (s *ResolutionServiceServer) CreateResolution(
@@ -113,4 +113,24 @@ func (s *ResolutionServiceServer) CreateResolution(
 	}
 
 	return protoUser, nil
+}
+
+func (s *ResolutionServiceServer) GetResolutionsByUserId(
+	ctx context.Context,
+	request *proto.UserId,
+) (*proto.RepeatedResolutions, error) {
+	var resolutionModels []ResolutionModel
+	s.Db.Where("user_id = ?", request.UserId).Find(&resolutionModels)
+
+	var protoResolutions []*proto.Resolution
+
+	for _, resolution := range resolutionModels {
+		protoResolutions = append(protoResolutions, &proto.Resolution{
+			Id:     int32(resolution.ID),
+			Name:   resolution.Name,
+			UserId: int32(resolution.UserId),
+		})
+	}
+
+	return &proto.RepeatedResolutions{Resolutions: protoResolutions}, nil
 }
