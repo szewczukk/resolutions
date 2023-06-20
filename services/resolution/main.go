@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 
 	"github.com/szewczukk/resolution-service/proto"
+	userProto "github.com/szewczukk/user-service/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -20,12 +23,17 @@ type ResolutionModel struct {
 
 type ResolutionServiceServer struct {
 	proto.UnimplementedResolutionServiceServer
-	Db *gorm.DB
+	Db                *gorm.DB
+	UserServiceClient userProto.UserServiceClient
 }
 
-func NewResolutionServiceServer(db *gorm.DB) *ResolutionServiceServer {
+func NewResolutionServiceServer(
+	db *gorm.DB,
+	userServiceClient userProto.UserServiceClient,
+) *ResolutionServiceServer {
 	return &ResolutionServiceServer{
-		Db: db,
+		Db:                db,
+		UserServiceClient: userServiceClient,
 	}
 }
 
@@ -42,8 +50,12 @@ func main() {
 		panic(err)
 	}
 
+	conn, _ := grpc.Dial(":3000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	client := userProto.NewUserServiceClient(conn)
+
 	grpcServer := grpc.NewServer()
-	resolutionServiceServer := NewResolutionServiceServer(db)
+	resolutionServiceServer := NewResolutionServiceServer(db, client)
 	proto.RegisterResolutionServiceServer(grpcServer, resolutionServiceServer)
 	reflection.Register(grpcServer)
 
@@ -76,8 +88,20 @@ func (s *ResolutionServiceServer) CreateResolution(
 	ctx context.Context,
 	request *proto.CreateResolutionRequest,
 ) (*proto.Resolution, error) {
+	result, err := s.UserServiceClient.UserExists(
+		context.Background(),
+		&userProto.UserExistsRequest{Id: request.UserId},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if !result.Exists {
+		return nil, errors.New("user doesnt exist")
+	}
+
 	resolutionModel := ResolutionModel{Name: request.Name, UserId: int(request.UserId)}
-	err := s.Db.Create(&resolutionModel).Error
+	err = s.Db.Create(&resolutionModel).Error
 	if err != nil {
 		return nil, err
 	}
