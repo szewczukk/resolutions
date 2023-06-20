@@ -10,7 +10,7 @@ function ResolutionList() {
 	const resolutionsDispatch = useResolutionsDispatch();
 
 	useEffect(() => {
-		fetch("http://localhost:3001/").then((response) =>
+		fetch("http://localhost:3002/resolutions/").then((response) =>
 			response.json().then((result) => {
 				resolutionsDispatch(setResolutions(result));
 			})
@@ -20,7 +20,7 @@ function ResolutionList() {
 	return (
 		<ul>
 			{resolutions.map((resolution) => (
-				<li key={resolution.ID}>{resolution.name}</li>
+				<li key={resolution.id}>{resolution.name}</li>
 			))}
 		</ul>
 	);
