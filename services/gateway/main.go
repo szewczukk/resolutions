@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -74,6 +76,45 @@ func main() {
 		resolutions, err := resolutionServiceClient.GetAllResolutions(
 			context.Background(),
 			&resolutionServiceProto.GetAllResolutionsRequest{},
+		)
+
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(resolutions.Resolutions)
+	})
+
+	app.Get("/current-user/resolutions/", func(c *fiber.Ctx) error {
+		authorizationToken := c.Get("Authorization")
+		splitToken := strings.Split(authorizationToken, "Bearer ")
+		jwtTokenString := splitToken[1]
+
+		token, err := jwt.Parse(jwtTokenString, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("invalid token singing method")
+			}
+
+			return sampleSecretKey, nil
+		})
+		if err != nil {
+			return err
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return errors.New("invalid claim")
+		}
+
+		if !token.Valid {
+			return errors.New("invalid token")
+		}
+
+		userId := claims["userId"].(float64)
+
+		resolutions, err := resolutionServiceClient.GetResolutionsByUserId(
+			context.Background(),
+			&resolutionServiceProto.UserId{UserId: int32(userId)},
 		)
 
 		if err != nil {
