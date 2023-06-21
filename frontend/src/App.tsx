@@ -4,12 +4,12 @@ import { ResolutionsProvider } from "./contexts/Resolutions";
 
 function App() {
 	return (
-		<>
+		<main>
 			<ResolutionsProvider>
 				<ResolutionList />
 				<ResolutionForm />
 			</ResolutionsProvider>
-		</>
+		</main>
 	);
 }
 
