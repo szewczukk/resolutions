@@ -1,8 +1,10 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function LoginForm() {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
+	const navigate = useNavigate();
 
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -16,8 +18,8 @@ function LoginForm() {
 		const result = await response.json();
 
 		if (response.status === 200) {
-			console.log(result);
 			localStorage.setItem("token", result.token);
+			navigate("/");
 		}
 	};
 
@@ -39,7 +41,7 @@ function LoginForm() {
 				Password
 				<input type="password" onChange={onPasswordChange} required />
 			</label>
-			<input type="submit" />
+			<input type="submit" value="Log in" />
 		</form>
 	);
 }
