@@ -10,7 +10,11 @@ function ResolutionList() {
 	const resolutionsDispatch = useResolutionsDispatch();
 
 	useEffect(() => {
-		fetch("http://localhost:3002/resolutions/").then((response) =>
+		const token = localStorage.getItem("token");
+
+		fetch("http://localhost:3002/current-user/resolutions", {
+			headers: [["Authorization", `Bearer ${token}`]],
+		}).then((response) =>
 			response.json().then((result) => {
 				resolutionsDispatch(setResolutions(result));
 			})
