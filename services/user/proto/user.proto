@@ -2,10 +2,6 @@ syntax = "proto3";
 
 option go_package = "github.com/szewczukk/user-service/proto";
 
-message UserExistsRequest {
-	int32 id = 1;
-}
-
 message UserExistsResponse {
 	bool exists = 1;
 }
@@ -28,13 +24,14 @@ message UserCredentials {
 	string password = 2;
 }
 
-message AuthenticateUserResponse {
+message UserServiceUserId {
 	int32 userId = 1;
 }
 
 service UserService {
-	rpc UserExists(UserExistsRequest) returns (UserExistsResponse) {}
+	rpc UserExists(UserServiceUserId) returns (UserExistsResponse) {}
 	rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
+	rpc GetUserById(UserServiceUserId) returns (User) {}
 	rpc CreateUser(UserCredentials) returns (User) {}
-	rpc AuthenticateUser(UserCredentials) returns (AuthenticateUserResponse) {}
+	rpc AuthenticateUser(UserCredentials) returns (UserServiceUserId) {}
 }

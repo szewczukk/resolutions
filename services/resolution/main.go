@@ -90,7 +90,7 @@ func (s *ResolutionServiceServer) CreateResolution(
 ) (*proto.Resolution, error) {
 	result, err := s.UserServiceClient.UserExists(
 		context.Background(),
-		&userProto.UserExistsRequest{Id: request.UserId},
+		&userProto.UserServiceUserId{UserId: request.UserId},
 	)
 	if err != nil {
 		return nil, err

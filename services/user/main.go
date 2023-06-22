@@ -56,9 +56,9 @@ func main() {
 
 func (s *UserServiceServer) UserExists(
 	ctx context.Context,
-	request *proto.UserExistsRequest,
+	request *proto.UserServiceUserId,
 ) (*proto.UserExistsResponse, error) {
-	userModel := UserModel{ID: int(request.Id)}
+	userModel := UserModel{ID: int(request.UserId)}
 	err := s.Db.First(&userModel).Error
 
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *UserServiceServer) CreateUser(
 func (s *UserServiceServer) AuthenticateUser(
 	ctx context.Context,
 	request *proto.UserCredentials,
-) (*proto.AuthenticateUserResponse, error) {
+) (*proto.UserServiceUserId, error) {
 	user := new(UserModel)
 	err := s.Db.First(&user, UserModel{Username: request.Username}).Error
 	if err != nil {
@@ -123,5 +123,19 @@ func (s *UserServiceServer) AuthenticateUser(
 		return nil, errors.New("wrong password")
 	}
 
-	return &proto.AuthenticateUserResponse{UserId: int32(user.ID)}, nil
+	return &proto.UserServiceUserId{UserId: int32(user.ID)}, nil
+}
+
+func (s *UserServiceServer) GetUserById(
+	ctx context.Context,
+	request *proto.UserServiceUserId,
+) (*proto.User, error) {
+	userModel := UserModel{ID: int(request.UserId)}
+	err := s.Db.First(&userModel).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.User{Id: int32(userModel.ID), Username: userModel.Username}, nil
 }

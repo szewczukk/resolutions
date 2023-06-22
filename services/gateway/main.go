@@ -105,6 +105,26 @@ func main() {
 		return c.JSON(resolutions.Resolutions)
 	})
 
+	app.Get("/current-user/", func(c *fiber.Ctx) error {
+		authorizationHeader := c.Get("Authorization")
+
+		userId, err := getUserIdFromAuthorizationHeader(authorizationHeader)
+		if err != nil {
+			return err
+		}
+
+		user, err := userServiceClient.GetUserById(
+			context.Background(),
+			&userServiceProto.UserServiceUserId{UserId: userId},
+		)
+
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(user)
+	})
+
 	app.Post("/resolutions/", func(c *fiber.Ctx) error {
 		createResolutionPayload := new(CreateServicePayload)
 		if err := c.BodyParser(createResolutionPayload); err != nil {
