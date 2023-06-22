@@ -86,35 +86,16 @@ func main() {
 	})
 
 	app.Get("/current-user/resolutions/", func(c *fiber.Ctx) error {
-		authorizationToken := c.Get("Authorization")
-		splitToken := strings.Split(authorizationToken, "Bearer ")
-		jwtTokenString := splitToken[1]
+		authorizationHeader := c.Get("Authorization")
 
-		token, err := jwt.Parse(jwtTokenString, func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("invalid token singing method")
-			}
-
-			return sampleSecretKey, nil
-		})
+		userId, err := getUserIdFromAuthorizationHeader(authorizationHeader)
 		if err != nil {
 			return err
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			return errors.New("invalid claim")
-		}
-
-		if !token.Valid {
-			return errors.New("invalid token")
-		}
-
-		userId := claims["userId"].(float64)
-
 		resolutions, err := resolutionServiceClient.GetResolutionsByUserId(
 			context.Background(),
-			&resolutionServiceProto.UserId{UserId: int32(userId)},
+			&resolutionServiceProto.UserId{UserId: userId},
 		)
 
 		if err != nil {
@@ -175,4 +156,33 @@ func main() {
 	})
 
 	app.Listen(":3002")
+}
+
+func getUserIdFromAuthorizationHeader(header string) (int32, error) {
+	splitToken := strings.Split(header, "Bearer ")
+	jwtTokenString := splitToken[1]
+
+	token, err := jwt.Parse(jwtTokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("invalid token singing method")
+		}
+
+		return sampleSecretKey, nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, errors.New("invalid claim")
+	}
+
+	if !token.Valid {
+		return 0, errors.New("invalid token")
+	}
+
+	userId := int32(claims["userId"].(float64))
+
+	return userId, nil
 }
