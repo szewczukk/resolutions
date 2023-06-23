@@ -45,7 +45,7 @@ func main() {
 
 	db.AutoMigrate(&ResolutionModel{})
 
-	listener, err := net.Listen("tcp", ":3001")
+	listener, err := net.Listen("tcp", ":3002")
 	if err != nil {
 		panic(err)
 	}

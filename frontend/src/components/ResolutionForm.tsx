@@ -10,7 +10,7 @@ function ResolutionForm() {
 		e.preventDefault();
 
 		const response = await fetch(
-			"http://localhost:3002/current-user/resolutions",
+			"http://localhost:3000/current-user/resolutions",
 			{
 				method: "POST",
 				headers: [["Content-Type", "application/json"]],

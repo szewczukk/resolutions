@@ -39,7 +39,7 @@ func main() {
 
 	db.AutoMigrate(&UserModel{})
 
-	listener, err := net.Listen("tcp", ":3000")
+	listener, err := net.Listen("tcp", ":3001")
 	if err != nil {
 		panic(err)
 	}

@@ -53,7 +53,7 @@ var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func main() {
 	scoreServiceConnection, err := grpc.Dial(
-		":3002",
+		":3003",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -61,7 +61,7 @@ func main() {
 	}
 
 	resolutionServiceConnection, err := grpc.Dial(
-		":3001",
+		":3002",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -69,7 +69,7 @@ func main() {
 	}
 
 	userServiceConnection, err := grpc.Dial(
-		":3000",
+		":3001",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -292,7 +292,7 @@ func main() {
 		return c.JSON(AuthenticationTokenPayload{Token: tokenString})
 	})
 
-	app.Listen(":3003")
+	app.Listen(":3000")
 }
 
 func getUserIdFromAuthorizationHeader(header string) (int32, error) {
