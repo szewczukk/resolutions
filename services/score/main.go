@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/szewczukk/score-service/proto"
@@ -73,6 +73,18 @@ func main() {
 		panic(err)
 	}
 
+	userCreatedQueue, err := ch.QueueDeclare(
+		"userCreated",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	msgs, err := ch.Consume(
 		queue.Name,
 		"",
@@ -101,15 +113,7 @@ func main() {
 			}).Error
 
 			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					db.Create(UserScoreModel{
-						UserId: int(payload.UserId),
-						Score:  1,
-					})
-					continue
-				} else {
-					panic(err)
-				}
+				panic(err)
 			}
 
 			db.Model(
@@ -119,6 +123,36 @@ func main() {
 			).Update(
 				"score", userScore.Score+1,
 			)
+		}
+		<-forever
+	}()
+
+	userCreatedMsgs, err := ch.Consume(
+		userCreatedQueue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		var forever chan struct{}
+		for msg := range userCreatedMsgs {
+			userIdStr := string(msg.Body)
+			userIdInt64, err := strconv.ParseInt(userIdStr, 10, 32)
+			if err != nil {
+				panic(err)
+			}
+
+			db.Create(&UserScoreModel{
+				UserId: int(userIdInt64),
+				Score:  0,
+			})
 		}
 		<-forever
 	}()

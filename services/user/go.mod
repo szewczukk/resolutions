@@ -3,6 +3,7 @@ module github.com/szewczukk/user-service
 go 1.20
 
 require (
+	github.com/rabbitmq/amqp091-go v1.8.1
 	golang.org/x/crypto v0.10.0
 	google.golang.org/grpc v1.56.0
 	google.golang.org/protobuf v1.30.0

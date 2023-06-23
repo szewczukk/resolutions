@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
+	"time"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/szewczukk/user-service/proto"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
@@ -23,11 +26,13 @@ type UserModel struct {
 type UserServiceServer struct {
 	proto.UnimplementedUserServiceServer
 	Db *gorm.DB
+	Ch *amqp.Channel
 }
 
-func NewUserServiceServer(db *gorm.DB) *UserServiceServer {
+func NewUserServiceServer(db *gorm.DB, ch *amqp.Channel) *UserServiceServer {
 	return &UserServiceServer{
 		Db: db,
+		Ch: ch,
 	}
 }
 
@@ -39,13 +44,25 @@ func main() {
 
 	db.AutoMigrate(&UserModel{})
 
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		panic(err)
+	}
+	defer ch.Close()
+
 	listener, err := net.Listen("tcp", ":3001")
 	if err != nil {
 		panic(err)
 	}
 
 	grpcServer := grpc.NewServer()
-	userServiceServer := NewUserServiceServer(db)
+	userServiceServer := NewUserServiceServer(db, ch)
 	proto.RegisterUserServiceServer(grpcServer, userServiceServer)
 	reflection.Register(grpcServer)
 
@@ -89,7 +106,7 @@ func (s *UserServiceServer) GetAllUsers(
 }
 
 func (s *UserServiceServer) CreateUser(
-	ctx context.Context,
+	c context.Context,
 	request *proto.UserCredentials,
 ) (*proto.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
@@ -99,6 +116,24 @@ func (s *UserServiceServer) CreateUser(
 
 	payload := UserModel{Username: request.Username, Password: string(hashedPassword)}
 	err = s.Db.Create(&payload).Error
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = s.Ch.PublishWithContext(
+		ctx,
+		"",
+		"userCreated",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(fmt.Sprintf("%v", payload.ID)),
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
