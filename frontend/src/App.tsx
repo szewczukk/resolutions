@@ -5,6 +5,7 @@ import ResolutionList from "./components/ResolutionList";
 import { ResolutionsProvider } from "./contexts/Resolutions";
 import LogoutButton from "./components/LogoutButton";
 import UserHeading from "./components/UserHeading";
+import RegisterForm from "./components/RegisterForm";
 
 const router = createBrowserRouter([
 	{
@@ -25,6 +26,14 @@ const router = createBrowserRouter([
 		element: (
 			<>
 				<LoginForm />
+			</>
+		),
+	},
+	{
+		path: "/register",
+		element: (
+			<>
+				<RegisterForm />
 			</>
 		),
 	},

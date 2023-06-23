@@ -49,6 +49,15 @@ type UserScore struct {
 	Score    int32  `json:"score"`
 }
 
+type UserCredentails struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type CurrentUserCreateResolutionRequest struct {
+	Name string `json:"name"`
+}
+
 var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func main() {
@@ -179,6 +188,35 @@ func main() {
 		return c.JSON(resolutions.Resolutions)
 	})
 
+	app.Post("/current-user/resolutions/", func(c *fiber.Ctx) error {
+		authorizationHeader := c.Get("Authorization")
+
+		userId, err := getUserIdFromAuthorizationHeader(authorizationHeader)
+		if err != nil {
+			return err
+		}
+
+		body := new(CurrentUserCreateResolutionRequest)
+		if err = c.BodyParser(&body); err != nil {
+			return err
+		}
+
+		resolution, err := resolutionServiceClient.CreateResolution(
+			context.Background(),
+			&resolutionServiceProto.CreateResolutionRequest{
+				UserId: userId,
+				Name:   body.Name,
+			},
+		)
+
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		return c.JSON(resolution)
+	})
+
 	app.Post("/current-user/resolutions/:id/complete", func(c *fiber.Ctx) error {
 		payload := new(CompleteResolutionPayload)
 
@@ -290,6 +328,26 @@ func main() {
 		}
 
 		return c.JSON(AuthenticationTokenPayload{Token: tokenString})
+	})
+
+	app.Post("/register/", func(c *fiber.Ctx) error {
+		credentials := new(UserCredentails)
+		if err := c.BodyParser(credentials); err != nil {
+			return err
+		}
+
+		response, err := userServiceClient.CreateUser(
+			context.Background(),
+			&userServiceProto.UserCredentials{
+				Username: credentials.Username,
+				Password: credentials.Password,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(response)
 	})
 
 	app.Listen(":3000")

@@ -3,18 +3,22 @@ import { addResolution, useResolutionsDispatch } from "../contexts/Resolutions";
 
 function ResolutionForm() {
 	const [name, setName] = useState("");
-	const [userId, setUserId] = useState(0);
 	const resolutionsDispatch = useResolutionsDispatch();
 
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
+		const token = localStorage.getItem("token");
+
 		const response = await fetch(
 			"http://localhost:3000/current-user/resolutions",
 			{
 				method: "POST",
-				headers: [["Content-Type", "application/json"]],
-				body: JSON.stringify({ name, userId }),
+				headers: [
+					["Content-Type", "application/json"],
+					["Authorization", `Bearer ${token}`],
+				],
+				body: JSON.stringify({ name }),
 			}
 		);
 
@@ -29,19 +33,11 @@ function ResolutionForm() {
 		setName(e.currentTarget.value);
 	};
 
-	const onUserIdChange = (e: FormEvent<HTMLInputElement>) => {
-		setUserId(parseInt(e.currentTarget.value));
-	};
-
 	return (
 		<form onSubmit={onSubmit}>
 			<label>
 				Name
 				<input type="text" onChange={onNameChange} required />
-			</label>
-			<label>
-				UserId
-				<input type="number" onChange={onUserIdChange} required />
 			</label>
 			<input type="submit" />
 		</form>

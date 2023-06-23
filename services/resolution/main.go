@@ -50,7 +50,7 @@ func main() {
 		panic(err)
 	}
 
-	conn, _ := grpc.Dial(":3000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, _ := grpc.Dial(":3001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	client := userProto.NewUserServiceClient(conn)
 

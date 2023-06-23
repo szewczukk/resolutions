@@ -10,7 +10,7 @@ function LoginForm() {
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		const response = await fetch("http://localhost:3000/login/", {
+		const response = await fetch("http://localhost:3000/register/", {
 			method: "POST",
 			headers: [["Content-Type", "application/json"]],
 			body: JSON.stringify({ username, password }),
@@ -20,7 +20,7 @@ function LoginForm() {
 
 		if (response.status === 200) {
 			localStorage.setItem("token", result.token);
-			navigate("/");
+			navigate("/login");
 		}
 	};
 
@@ -42,9 +42,9 @@ function LoginForm() {
 				Password
 				<input type="password" onChange={onPasswordChange} required />
 			</label>
-			<input type="submit" value="Log in" />
-			<Link to="/register" style={{ marginLeft: "12px" }}>
-				Register
+			<input type="submit" value="Register" />
+			<Link to="/login" style={{ marginLeft: "12px" }}>
+				Login
 			</Link>
 		</form>
 	);

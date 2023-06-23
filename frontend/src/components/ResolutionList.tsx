@@ -16,7 +16,7 @@ function ResolutionList() {
 			headers: [["Authorization", `Bearer ${token}`]],
 		}).then((response) =>
 			response.json().then((result) => {
-				resolutionsDispatch(setResolutions(result));
+				resolutionsDispatch(setResolutions(result || []));
 			})
 		);
 	}, []);
