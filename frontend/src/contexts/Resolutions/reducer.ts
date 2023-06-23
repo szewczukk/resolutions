@@ -7,6 +7,12 @@ export const setResolutions = (resolutions: Resolution[]) =>
 		payload: { resolutions },
 	} as const);
 
+export const completeResolution = (resolutionId: number) =>
+	({
+		type: "COMPLETE_RESOLUTION",
+		payload: { resolutionId },
+	} as const);
+
 export const addResolution = (resolution: Resolution) =>
 	({
 		type: "ADD_RESOLUTION",
@@ -15,7 +21,8 @@ export const addResolution = (resolution: Resolution) =>
 
 type Action =
 	| ReturnType<typeof setResolutions>
-	| ReturnType<typeof addResolution>;
+	| ReturnType<typeof addResolution>
+	| ReturnType<typeof completeResolution>;
 
 export type Store = Resolution[];
 export type ActionDispatch = Dispatch<Action>;
@@ -27,6 +34,24 @@ const reducer = (state: Store, action: Action): Store => {
 
 		case "ADD_RESOLUTION":
 			return [...state, action.payload.resolution];
+
+		case "COMPLETE_RESOLUTION": {
+			const id = action.payload.resolutionId;
+
+			const completedResolution = state.find((r) => r.id === id);
+			if (completedResolution === undefined) {
+				return state;
+			}
+
+			const newState = state.filter((resolution) => resolution.id !== id);
+
+			newState.push({
+				...completedResolution,
+				completed: true,
+			});
+
+			return newState;
+		}
 
 		default:
 			return state;

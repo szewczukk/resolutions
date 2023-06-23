@@ -3,6 +3,7 @@ module github.com/szewczukk/resolution-service
 go 1.20
 
 require (
+	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/szewczukk/user-service v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.56.0
 	google.golang.org/protobuf v1.30.0

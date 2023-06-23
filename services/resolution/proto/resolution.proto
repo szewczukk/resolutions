@@ -6,6 +6,7 @@ message Resolution {
 	int32 id = 1;
 	string name = 2;
 	int32 userId = 3;
+	bool completed = 4;
 }
 
 message GetAllResolutionsRequest {

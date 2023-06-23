@@ -4,14 +4,15 @@ import {
 	useResolutions,
 	useResolutionsDispatch,
 } from "../contexts/Resolutions";
+import { completeResolution } from "../contexts/Resolutions/reducer";
 
 function ResolutionList() {
 	const resolutions = useResolutions();
 	const resolutionsDispatch = useResolutionsDispatch();
 
-	useEffect(() => {
-		const token = localStorage.getItem("token");
+	const token = localStorage.getItem("token");
 
+	useEffect(() => {
 		fetch("http://localhost:3000/current-user/resolutions", {
 			headers: [["Authorization", `Bearer ${token}`]],
 		}).then((response) =>
@@ -21,10 +22,44 @@ function ResolutionList() {
 		);
 	}, []);
 
+	const onCompleteButtonClicked = (resolutionId: number) => {
+		fetch(
+			`http://localhost:3000/current-user/resolutions/${resolutionId}/complete`,
+			{
+				method: "POST",
+				headers: [["Authorization", `Bearer ${token}`]],
+			}
+		).then((response) =>
+			response.text().then((result) => {
+				resolutionsDispatch(completeResolution(resolutionId));
+			})
+		);
+	};
+
 	return (
 		<ul>
 			{resolutions.map((resolution) => (
-				<li key={resolution.id}>{resolution.name}</li>
+				<li
+					key={resolution.id}
+					style={{
+						textDecoration: resolution.completed
+							? "line-through"
+							: "none",
+					}}
+				>
+					{resolution.name}
+
+					{!resolution.completed && (
+						<button
+							style={{ marginLeft: "12px" }}
+							onClick={() =>
+								onCompleteButtonClicked(resolution.id)
+							}
+						>
+							<i>Complete {resolution.id}</i>
+						</button>
+					)}
+				</li>
 			))}
 		</ul>
 	);

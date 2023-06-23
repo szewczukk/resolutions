@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/szewczukk/resolution-service/proto"
 	userProto "github.com/szewczukk/user-service/proto"
 	"google.golang.org/grpc"
@@ -16,9 +18,15 @@ import (
 )
 
 type ResolutionModel struct {
-	ID     int    `gorm:"primarykey"`
-	Name   string `gorm:"unique"`
-	UserId int
+	ID        int    `gorm:"primarykey"`
+	Name      string `gorm:"unique"`
+	UserId    int
+	Completed bool
+}
+
+type CompleteResolutionPayload struct {
+	UserId       int32 `json:"userId"`
+	ResolutionId int32 `json:"resolutionId"`
 }
 
 type ResolutionServiceServer struct {
@@ -44,6 +52,67 @@ func main() {
 	}
 
 	db.AutoMigrate(&ResolutionModel{})
+
+	rabbitMqConnection, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		panic(err)
+	}
+	defer rabbitMqConnection.Close()
+
+	ch, err := rabbitMqConnection.Channel()
+	if err != nil {
+		panic(err)
+	}
+	defer ch.Close()
+
+	queue, err := ch.QueueDeclare(
+		"resolutionCompleted",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	msgs, err := ch.Consume(
+		queue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		var forever chan struct{}
+		for msg := range msgs {
+			payload := new(CompleteResolutionPayload)
+			err := json.Unmarshal(msg.Body, payload)
+			if err != nil {
+				panic(err)
+			}
+
+			if err != nil {
+				panic(err)
+			}
+
+			db.Model(
+				&ResolutionModel{},
+			).Where(
+				"id = ?", payload.ResolutionId,
+			).Update(
+				"completed", true,
+			)
+		}
+		<-forever
+	}()
 
 	listener, err := net.Listen("tcp", ":3002")
 	if err != nil {
@@ -100,19 +169,24 @@ func (s *ResolutionServiceServer) CreateResolution(
 		return nil, errors.New("user doesnt exist")
 	}
 
-	resolutionModel := ResolutionModel{Name: request.Name, UserId: int(request.UserId)}
+	resolutionModel := ResolutionModel{
+		Name:      request.Name,
+		UserId:    int(request.UserId),
+		Completed: false,
+	}
 	err = s.Db.Create(&resolutionModel).Error
 	if err != nil {
 		return nil, err
 	}
 
-	protoUser := &proto.Resolution{
-		Id:     int32(resolutionModel.ID),
-		Name:   resolutionModel.Name,
-		UserId: int32(resolutionModel.UserId),
+	protoResolution := &proto.Resolution{
+		Id:        int32(resolutionModel.ID),
+		Name:      resolutionModel.Name,
+		UserId:    int32(resolutionModel.UserId),
+		Completed: resolutionModel.Completed,
 	}
 
-	return protoUser, nil
+	return protoResolution, nil
 }
 
 func (s *ResolutionServiceServer) GetResolutionsByUserId(
@@ -126,9 +200,10 @@ func (s *ResolutionServiceServer) GetResolutionsByUserId(
 
 	for _, resolution := range resolutionModels {
 		protoResolutions = append(protoResolutions, &proto.Resolution{
-			Id:     int32(resolution.ID),
-			Name:   resolution.Name,
-			UserId: int32(resolution.UserId),
+			Id:        int32(resolution.ID),
+			Name:      resolution.Name,
+			UserId:    int32(resolution.UserId),
+			Completed: resolution.Completed,
 		})
 	}
 
