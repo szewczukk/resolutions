@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/szewczukk/score-service/proto";
+
+message UserScore {
+	int32 userId = 1;
+	int32 score = 2;
+}
+
+message GetAllUserScoresRequest {
+
+}
+
+message GetAllUserScoresResponse {
+	repeated UserScore scores = 1;
+}
+
+service ScoreService {
+	rpc GetAllUserScores(GetAllUserScoresRequest) returns (GetAllUserScoresResponse) {}
+}
