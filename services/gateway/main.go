@@ -14,6 +14,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	amqp "github.com/rabbitmq/amqp091-go"
 	resolutionServiceProto "github.com/szewczukk/resolution-service/proto"
+	scoreServiceProto "github.com/szewczukk/score-service/proto"
 	userServiceProto "github.com/szewczukk/user-service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -38,9 +39,27 @@ type CompleteResolutionPayload struct {
 	ResolutionId int32 `json:"resolutionId"`
 }
 
+type GetUserScoresPayload struct {
+	UserScores []UserScore
+}
+
+type UserScore struct {
+	UserId   int32  `json:"userId"`
+	Username string `json:"username"`
+	Score    int32  `json:"score"`
+}
+
 var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func main() {
+	scoreServiceConnection, err := grpc.Dial(
+		":3002",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Println(err)
+	}
+
 	resolutionServiceConnection, err := grpc.Dial(
 		":3001",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -62,6 +81,9 @@ func main() {
 	)
 	userServiceClient := userServiceProto.NewUserServiceClient(
 		userServiceConnection,
+	)
+	scoreServiceCLient := scoreServiceProto.NewScoreServiceClient(
+		scoreServiceConnection,
 	)
 
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
@@ -93,16 +115,35 @@ func main() {
 	app.Use(cors.New())
 
 	app.Get("/users/", func(c *fiber.Ctx) error {
-		users, err := userServiceClient.GetAllUsers(
+		userScores, err := scoreServiceCLient.GetAllUserScores(
 			context.Background(),
-			&userServiceProto.GetAllUsersRequest{},
+			&scoreServiceProto.GetAllUserScoresRequest{},
 		)
 
 		if err != nil {
 			return err
 		}
 
-		return c.JSON(users.Users)
+		payload := new(GetUserScoresPayload)
+
+		for _, userScore := range userScores.Scores {
+			userId := int32(userScore.UserId)
+			user, err := userServiceClient.GetUserById(
+				context.Background(),
+				&userServiceProto.UserServiceUserId{UserId: int32(userScore.UserId)},
+			)
+			if err != nil {
+				return err
+			}
+
+			payload.UserScores = append(payload.UserScores, UserScore{
+				UserId:   userId,
+				Username: user.Username,
+				Score:    userScore.Score,
+			})
+		}
+
+		return c.JSON(payload)
 	})
 
 	app.Get("/resolutions/", func(c *fiber.Ctx) error {
@@ -251,7 +292,7 @@ func main() {
 		return c.JSON(AuthenticationTokenPayload{Token: tokenString})
 	})
 
-	app.Listen(":3002")
+	app.Listen(":3003")
 }
 
 func getUserIdFromAuthorizationHeader(header string) (int32, error) {
