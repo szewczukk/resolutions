@@ -152,7 +152,7 @@ func main() {
 			})
 		}
 
-		return c.JSON(payload)
+		return c.JSON(payload.UserScores)
 	})
 
 	app.Get("/resolutions/", func(c *fiber.Ctx) error {
