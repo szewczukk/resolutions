@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log"
 	"net"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/szewczukk/score-service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -13,13 +16,18 @@ import (
 )
 
 type UserScoreModel struct {
-	UserId int `gorm:"primarykey"`
+	UserId int
 	Score  int
 }
 
 type ScoreServiceServer struct {
 	proto.UnimplementedScoreServiceServer
 	Db *gorm.DB
+}
+
+type CompleteResolutionPayload struct {
+	UserId       int32 `json:"userId"`
+	ResolutionId int32 `json:"resolutionId"`
 }
 
 func NewScoreServiceServer(db *gorm.DB) *ScoreServiceServer {
@@ -36,10 +44,84 @@ func main() {
 
 	db.AutoMigrate(&UserScoreModel{})
 
-	listener, err := net.Listen("tcp", ":3001")
+	listener, err := net.Listen("tcp", ":3002")
 	if err != nil {
 		panic(err)
 	}
+
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		panic(err)
+	}
+	defer ch.Close()
+
+	queue, err := ch.QueueDeclare(
+		"resolutionCompleted",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	msgs, err := ch.Consume(
+		queue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		var forever chan struct{}
+		for msg := range msgs {
+			payload := new(CompleteResolutionPayload)
+			err := json.Unmarshal(msg.Body, payload)
+			if err != nil {
+				panic(err)
+			}
+
+			userScore := UserScoreModel{}
+			err = db.First(&userScore, &UserScoreModel{
+				UserId: int(payload.UserId),
+			}).Error
+
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					db.Create(UserScoreModel{
+						UserId: int(payload.UserId),
+						Score:  1,
+					})
+					continue
+				} else {
+					panic(err)
+				}
+			}
+
+			db.Model(
+				&UserScoreModel{},
+			).Where(
+				"user_id = ?", userScore.UserId,
+			).Update(
+				"score", userScore.Score+1,
+			)
+		}
+		<-forever
+	}()
 
 	grpcServer := grpc.NewServer()
 	scoreServiceServer := NewScoreServiceServer(db)

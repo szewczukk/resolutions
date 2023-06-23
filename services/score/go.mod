@@ -3,6 +3,7 @@ module github.com/szewczukk/score-service
 go 1.20
 
 require (
+	github.com/rabbitmq/amqp091-go v1.8.1
 	google.golang.org/grpc v1.56.1
 	google.golang.org/protobuf v1.30.0
 	gorm.io/driver/sqlite v1.5.2

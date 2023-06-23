@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/golang-jwt/jwt"
+	amqp "github.com/rabbitmq/amqp091-go"
 	resolutionServiceProto "github.com/szewczukk/resolution-service/proto"
 	userServiceProto "github.com/szewczukk/user-service/proto"
 	"google.golang.org/grpc"
@@ -27,6 +31,11 @@ type LoginPayload struct {
 
 type AuthenticationTokenPayload struct {
 	Token string `json:"token"`
+}
+
+type CompleteResolutionPayload struct {
+	UserId       int32 `json:"userId"`
+	ResolutionId int32 `json:"resolutionId"`
 }
 
 var sampleSecretKey = []byte("SecretYouShouldHide")
@@ -54,6 +63,30 @@ func main() {
 	userServiceClient := userServiceProto.NewUserServiceClient(
 		userServiceConnection,
 	)
+
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		panic(err)
+	}
+	defer ch.Close()
+
+	queue, err := ch.QueueDeclare(
+		"resolutionCompleted",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	app := fiber.New()
 
@@ -103,6 +136,49 @@ func main() {
 		}
 
 		return c.JSON(resolutions.Resolutions)
+	})
+
+	app.Post("/current-user/resolutions/:id/complete", func(c *fiber.Ctx) error {
+		payload := new(CompleteResolutionPayload)
+
+		id, err := strconv.ParseInt(c.Params("id"), 10, 32)
+		if err != nil {
+			return err
+		}
+
+		userId, err := getUserIdFromAuthorizationHeader(c.Get("Authorization"))
+		if err != nil {
+			return err
+		}
+
+		payload.ResolutionId = int32(id)
+		payload.UserId = userId
+
+		serialized, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err = ch.PublishWithContext(
+			ctx,
+			"",
+			queue.Name,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        serialized,
+			},
+		)
+
+		if err != nil {
+			return err
+		}
+
+		return c.SendStatus(200)
 	})
 
 	app.Get("/current-user/", func(c *fiber.Ctx) error {
