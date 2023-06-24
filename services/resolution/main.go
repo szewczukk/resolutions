@@ -26,8 +26,13 @@ type ResolutionModel struct {
 }
 
 type CompleteResolutionPayload struct {
-	UserId       int32 `json:"userId"`
 	ResolutionId int32 `json:"resolutionId"`
+	UserId       int32 `json:"userId"`
+}
+
+type DeleteResolutionPayload struct {
+	ResolutionId int32 `json:"resolutionId"`
+	UserId       int32 `json:"userId"`
 }
 
 type ResolutionServiceServer struct {
@@ -216,4 +221,46 @@ func (s *ResolutionServiceServer) CompleteResolution(
 		UserId:    int32(resolutionModel.UserId),
 		Completed: resolutionModel.Completed,
 	}, nil
+}
+
+func (s *ResolutionServiceServer) DeleteResolution(
+	c context.Context,
+	request *proto.DeleteResolutionRequest,
+) (*proto.DeleteResolutionResponse, error) {
+	resolutionModel := new(ResolutionModel)
+	err := s.Db.First(&resolutionModel, ResolutionModel{ID: int(request.ResolutionId)}).Error
+	if err != nil {
+		return nil, err
+	}
+
+	s.Db.Delete(&ResolutionModel{ID: int(request.ResolutionId)})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	payload := new(DeleteResolutionPayload)
+	payload.ResolutionId = request.ResolutionId
+	payload.UserId = int32(resolutionModel.UserId)
+
+	serialized, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Ch.PublishWithContext(
+		ctx,
+		"",
+		"resolutionDeleted",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        serialized,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.DeleteResolutionResponse{}, nil
 }

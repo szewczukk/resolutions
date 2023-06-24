@@ -26,6 +26,7 @@ type ResolutionServiceClient interface {
 	GetResolutionsByUserId(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*RepeatedResolutions, error)
 	CreateResolution(ctx context.Context, in *CreateResolutionRequest, opts ...grpc.CallOption) (*Resolution, error)
 	CompleteResolution(ctx context.Context, in *CompleteResolutionRequest, opts ...grpc.CallOption) (*Resolution, error)
+	DeleteResolution(ctx context.Context, in *DeleteResolutionRequest, opts ...grpc.CallOption) (*DeleteResolutionResponse, error)
 }
 
 type resolutionServiceClient struct {
@@ -72,6 +73,15 @@ func (c *resolutionServiceClient) CompleteResolution(ctx context.Context, in *Co
 	return out, nil
 }
 
+func (c *resolutionServiceClient) DeleteResolution(ctx context.Context, in *DeleteResolutionRequest, opts ...grpc.CallOption) (*DeleteResolutionResponse, error) {
+	out := new(DeleteResolutionResponse)
+	err := c.cc.Invoke(ctx, "/ResolutionService/DeleteResolution", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResolutionServiceServer is the server API for ResolutionService service.
 // All implementations must embed UnimplementedResolutionServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type ResolutionServiceServer interface {
 	GetResolutionsByUserId(context.Context, *UserId) (*RepeatedResolutions, error)
 	CreateResolution(context.Context, *CreateResolutionRequest) (*Resolution, error)
 	CompleteResolution(context.Context, *CompleteResolutionRequest) (*Resolution, error)
+	DeleteResolution(context.Context, *DeleteResolutionRequest) (*DeleteResolutionResponse, error)
 	mustEmbedUnimplementedResolutionServiceServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedResolutionServiceServer) CreateResolution(context.Context, *C
 }
 func (UnimplementedResolutionServiceServer) CompleteResolution(context.Context, *CompleteResolutionRequest) (*Resolution, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CompleteResolution not implemented")
+}
+func (UnimplementedResolutionServiceServer) DeleteResolution(context.Context, *DeleteResolutionRequest) (*DeleteResolutionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteResolution not implemented")
 }
 func (UnimplementedResolutionServiceServer) mustEmbedUnimplementedResolutionServiceServer() {}
 
@@ -184,6 +198,24 @@ func _ResolutionService_CompleteResolution_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResolutionService_DeleteResolution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteResolutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResolutionServiceServer).DeleteResolution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ResolutionService/DeleteResolution",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResolutionServiceServer).DeleteResolution(ctx, req.(*DeleteResolutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResolutionService_ServiceDesc is the grpc.ServiceDesc for ResolutionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var ResolutionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteResolution",
 			Handler:    _ResolutionService_CompleteResolution_Handler,
+		},
+		{
+			MethodName: "DeleteResolution",
+			Handler:    _ResolutionService_DeleteResolution_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

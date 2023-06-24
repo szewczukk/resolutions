@@ -30,9 +30,18 @@ message UserId {
 	int32 userId = 1;
 }
 
+message DeleteResolutionRequest {
+	int32 resolutionId = 1;
+}
+
+message DeleteResolutionResponse {
+
+}
+
 service ResolutionService {
 	rpc GetAllResolutions(GetAllResolutionsRequest) returns (RepeatedResolutions) {}
 	rpc GetResolutionsByUserId(UserId) returns (RepeatedResolutions) {}
 	rpc CreateResolution(CreateResolutionRequest) returns (Resolution) {}
 	rpc CompleteResolution(CompleteResolutionRequest) returns (Resolution) {}
+	rpc DeleteResolution(DeleteResolutionRequest) returns (DeleteResolutionResponse) {}
 }

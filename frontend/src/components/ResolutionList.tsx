@@ -44,6 +44,7 @@ function ResolutionList() {
 					}}
 				>
 					{resolution.name}
+					{resolution.id}
 
 					{!resolution.completed && (
 						<button

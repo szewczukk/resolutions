@@ -30,6 +30,11 @@ type CompleteResolutionPayload struct {
 	ResolutionId int32 `json:"resolutionId"`
 }
 
+type DeleteResolutionPayload struct {
+	ResolutionId int32 `json:"resolutionId"`
+	UserId       int32 `json:"userId"`
+}
+
 func NewScoreServiceServer(db *gorm.DB) *ScoreServiceServer {
 	return &ScoreServiceServer{
 		Db: db,
@@ -63,18 +68,6 @@ func main() {
 
 	queue, err := ch.QueueDeclare(
 		"resolutionCompleted",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	userCreatedQueue, err := ch.QueueDeclare(
-		"userCreated",
 		false,
 		false,
 		false,
@@ -127,6 +120,18 @@ func main() {
 		<-forever
 	}()
 
+	userCreatedQueue, err := ch.QueueDeclare(
+		"userCreated",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	userCreatedMsgs, err := ch.Consume(
 		userCreatedQueue.Name,
 		"",
@@ -153,6 +158,59 @@ func main() {
 				UserId: int(userIdInt64),
 				Score:  0,
 			})
+		}
+		<-forever
+	}()
+
+	resolutionDeletedQueue, err := ch.QueueDeclare(
+		"resolutionDeleted",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	resolutionDeletedMsgs, err := ch.Consume(
+		resolutionDeletedQueue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		var forever chan struct{}
+		for msg := range resolutionDeletedMsgs {
+			payload := new(DeleteResolutionPayload)
+			if err := json.Unmarshal(msg.Body, &payload); err != nil {
+				log.Println(err)
+			}
+
+			userScore := UserScoreModel{}
+			err = db.First(&userScore, &UserScoreModel{
+				UserId: int(payload.UserId),
+			}).Error
+
+			if err != nil {
+				panic(err)
+			}
+
+			db.Model(
+				&UserScoreModel{},
+			).Where(
+				"user_id = ?", userScore.UserId,
+			).Update(
+				"score", userScore.Score-1,
+			)
 		}
 		<-forever
 	}()
