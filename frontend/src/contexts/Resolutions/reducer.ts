@@ -19,10 +19,17 @@ export const addResolution = (resolution: Resolution) =>
 		payload: { resolution },
 	} as const);
 
+export const deleteResolution = (resolutionId: number) =>
+	({
+		type: "DELETE_RESOLUTION",
+		payload: { resolutionId },
+	} as const);
+
 type Action =
 	| ReturnType<typeof setResolutions>
 	| ReturnType<typeof addResolution>
-	| ReturnType<typeof completeResolution>;
+	| ReturnType<typeof completeResolution>
+	| ReturnType<typeof deleteResolution>;
 
 export type Store = Resolution[];
 export type ActionDispatch = Dispatch<Action>;
@@ -52,6 +59,11 @@ const reducer = (state: Store, action: Action): Store => {
 
 			return newState;
 		}
+
+		case "DELETE_RESOLUTION":
+			return state.filter(
+				(resolution) => resolution.id !== action.payload.resolutionId
+			);
 
 		default:
 			return state;

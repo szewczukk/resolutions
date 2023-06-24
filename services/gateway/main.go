@@ -205,6 +205,26 @@ func main() {
 		return c.JSON(resolution)
 	})
 
+	app.Post("/resolutions/:id/delete", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseInt(c.Params("id"), 10, 32)
+		if err != nil {
+			return err
+		}
+
+		_, err = resolutionServiceClient.DeleteResolution(
+			context.Background(),
+			&resolutionServiceProto.DeleteResolutionRequest{
+				ResolutionId: int32(id),
+			},
+		)
+
+		if err != nil {
+			return err
+		}
+
+		return c.SendStatus(200)
+	})
+
 	app.Get("/current-user/", func(c *fiber.Ctx) error {
 		authorizationHeader := c.Get("Authorization")
 

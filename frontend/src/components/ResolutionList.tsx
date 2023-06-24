@@ -4,7 +4,10 @@ import {
 	useResolutions,
 	useResolutionsDispatch,
 } from "../contexts/Resolutions";
-import { completeResolution } from "../contexts/Resolutions/reducer";
+import {
+	completeResolution,
+	deleteResolution,
+} from "../contexts/Resolutions/reducer";
 
 function ResolutionList() {
 	const resolutions = useResolutions();
@@ -32,6 +35,16 @@ function ResolutionList() {
 		);
 	};
 
+	const onDeleteButtonClicked = (resolutionId: number) => {
+		fetch(`http://localhost:3000/resolutions/${resolutionId}/delete`, {
+			method: "POST",
+		}).then((response) =>
+			response.text().then(() => {
+				resolutionsDispatch(deleteResolution(resolutionId));
+			})
+		);
+	};
+
 	return (
 		<ul>
 			{resolutions.map((resolution) => (
@@ -44,7 +57,6 @@ function ResolutionList() {
 					}}
 				>
 					{resolution.name}
-					{resolution.id}
 
 					{!resolution.completed && (
 						<button
@@ -56,6 +68,13 @@ function ResolutionList() {
 							Complete
 						</button>
 					)}
+
+					<button
+						style={{ marginLeft: "12px" }}
+						onClick={() => onDeleteButtonClicked(resolution.id)}
+					>
+						Delete
+					</button>
 				</li>
 			))}
 		</ul>
