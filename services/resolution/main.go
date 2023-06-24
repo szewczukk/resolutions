@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/szewczukk/resolution-service/proto"
@@ -33,15 +34,18 @@ type ResolutionServiceServer struct {
 	proto.UnimplementedResolutionServiceServer
 	Db                *gorm.DB
 	UserServiceClient userProto.UserServiceClient
+	Ch                *amqp.Channel
 }
 
 func NewResolutionServiceServer(
 	db *gorm.DB,
 	userServiceClient userProto.UserServiceClient,
+	ch *amqp.Channel,
 ) *ResolutionServiceServer {
 	return &ResolutionServiceServer{
 		Db:                db,
 		UserServiceClient: userServiceClient,
+		Ch:                ch,
 	}
 }
 
@@ -65,55 +69,6 @@ func main() {
 	}
 	defer ch.Close()
 
-	queue, err := ch.QueueDeclare(
-		"resolutionCompleted",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	msgs, err := ch.Consume(
-		queue.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		var forever chan struct{}
-		for msg := range msgs {
-			payload := new(CompleteResolutionPayload)
-			err := json.Unmarshal(msg.Body, payload)
-			if err != nil {
-				panic(err)
-			}
-
-			if err != nil {
-				panic(err)
-			}
-
-			db.Model(
-				&ResolutionModel{},
-			).Where(
-				"id = ?", payload.ResolutionId,
-			).Update(
-				"completed", true,
-			)
-		}
-		<-forever
-	}()
-
 	listener, err := net.Listen("tcp", ":3002")
 	if err != nil {
 		panic(err)
@@ -124,7 +79,7 @@ func main() {
 	client := userProto.NewUserServiceClient(conn)
 
 	grpcServer := grpc.NewServer()
-	resolutionServiceServer := NewResolutionServiceServer(db, client)
+	resolutionServiceServer := NewResolutionServiceServer(db, client, ch)
 	proto.RegisterResolutionServiceServer(grpcServer, resolutionServiceServer)
 	reflection.Register(grpcServer)
 
@@ -208,4 +163,57 @@ func (s *ResolutionServiceServer) GetResolutionsByUserId(
 	}
 
 	return &proto.RepeatedResolutions{Resolutions: protoResolutions}, nil
+}
+
+func (s *ResolutionServiceServer) CompleteResolution(
+	c context.Context,
+	request *proto.CompleteResolutionRequest,
+) (*proto.Resolution, error) {
+	s.Db.Model(
+		&ResolutionModel{},
+	).Where(
+		"id = ?", request.ResolutionId,
+	).Update(
+		"completed", true,
+	)
+
+	resolutionModel := new(ResolutionModel)
+	err := s.Db.First(&resolutionModel, ResolutionModel{ID: int(request.ResolutionId)}).Error
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	payload := new(CompleteResolutionPayload)
+	payload.ResolutionId = request.ResolutionId
+	payload.UserId = int32(resolutionModel.UserId)
+
+	serialized, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Ch.PublishWithContext(
+		ctx,
+		"",
+		"resolutionCompleted",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        serialized,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.Resolution{
+		Id:        int32(resolutionModel.ID),
+		Name:      resolutionModel.Name,
+		UserId:    int32(resolutionModel.UserId),
+		Completed: resolutionModel.Completed,
+	}, nil
 }

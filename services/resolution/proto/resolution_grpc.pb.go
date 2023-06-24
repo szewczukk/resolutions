@@ -25,6 +25,7 @@ type ResolutionServiceClient interface {
 	GetAllResolutions(ctx context.Context, in *GetAllResolutionsRequest, opts ...grpc.CallOption) (*RepeatedResolutions, error)
 	GetResolutionsByUserId(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*RepeatedResolutions, error)
 	CreateResolution(ctx context.Context, in *CreateResolutionRequest, opts ...grpc.CallOption) (*Resolution, error)
+	CompleteResolution(ctx context.Context, in *CompleteResolutionRequest, opts ...grpc.CallOption) (*Resolution, error)
 }
 
 type resolutionServiceClient struct {
@@ -62,6 +63,15 @@ func (c *resolutionServiceClient) CreateResolution(ctx context.Context, in *Crea
 	return out, nil
 }
 
+func (c *resolutionServiceClient) CompleteResolution(ctx context.Context, in *CompleteResolutionRequest, opts ...grpc.CallOption) (*Resolution, error) {
+	out := new(Resolution)
+	err := c.cc.Invoke(ctx, "/ResolutionService/CompleteResolution", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResolutionServiceServer is the server API for ResolutionService service.
 // All implementations must embed UnimplementedResolutionServiceServer
 // for forward compatibility
@@ -69,6 +79,7 @@ type ResolutionServiceServer interface {
 	GetAllResolutions(context.Context, *GetAllResolutionsRequest) (*RepeatedResolutions, error)
 	GetResolutionsByUserId(context.Context, *UserId) (*RepeatedResolutions, error)
 	CreateResolution(context.Context, *CreateResolutionRequest) (*Resolution, error)
+	CompleteResolution(context.Context, *CompleteResolutionRequest) (*Resolution, error)
 	mustEmbedUnimplementedResolutionServiceServer()
 }
 
@@ -84,6 +95,9 @@ func (UnimplementedResolutionServiceServer) GetResolutionsByUserId(context.Conte
 }
 func (UnimplementedResolutionServiceServer) CreateResolution(context.Context, *CreateResolutionRequest) (*Resolution, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResolution not implemented")
+}
+func (UnimplementedResolutionServiceServer) CompleteResolution(context.Context, *CompleteResolutionRequest) (*Resolution, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteResolution not implemented")
 }
 func (UnimplementedResolutionServiceServer) mustEmbedUnimplementedResolutionServiceServer() {}
 
@@ -152,6 +166,24 @@ func _ResolutionService_CreateResolution_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResolutionService_CompleteResolution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteResolutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResolutionServiceServer).CompleteResolution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ResolutionService/CompleteResolution",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResolutionServiceServer).CompleteResolution(ctx, req.(*CompleteResolutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResolutionService_ServiceDesc is the grpc.ServiceDesc for ResolutionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -170,6 +202,10 @@ var ResolutionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateResolution",
 			Handler:    _ResolutionService_CreateResolution_Handler,
+		},
+		{
+			MethodName: "CompleteResolution",
+			Handler:    _ResolutionService_CompleteResolution_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
